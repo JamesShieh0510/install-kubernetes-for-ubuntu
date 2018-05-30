@@ -9,17 +9,28 @@ sudo cp /etc/kubernetes/admin.conf $HOME/
 sudo chown $(id -u):$(id -g) $HOME/admin.conf
 export KUBECONFIG=$HOME/admin.conf
 
-#run on master for every node
-ssh_password=your_password
-shpass -p "{$ssh_password}" scp /etc/kubernetes/admin.conf user@nodes.local: $HOME/
-
-
-#run on every nodes
-su root
+ssh_password=auto63906
+node_host=upb-2.local
+user=autolab
+rm ./k8s-config-setting.sh
+touch ./k8s-config-setting.sh
+cat <<EOF | sudo tee ./k8s-config-setting.sh
 kubeadm reset
 swapoff -a
-sudo chown $(id -u):$(id -g) $HOME/admin.conf
+sudo cp /home/$user/admin.conf \$HOME/
+sudo chown \$(id -u):\$(id -g) \$HOME/admin.conf
 export KUBECONFIG=$HOME/admin.conf
+
+EOF
+#run on master for every node
+sshpass -p "$ssh_password" scp /etc/kubernetes/admin.conf $user@$node_host:/home/$user/
+sshpass -p "$ssh_password" scp ./k8s-config-setting.sh $user@$node_host:/home/$user/
+
+#run on every nodes
+#login the user you use in line 14 
+cd $HOME
+su root 
+sh ./k8s-config-setting.sh
 
 #join cluster
 
