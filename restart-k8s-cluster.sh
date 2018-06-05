@@ -21,11 +21,18 @@ node_passwd=( "pswd1" "pawd2" )
 
 len=${#node_hosts[*]}  # it returns the array length
 
-
 #初始化 kubernetes master
 sudo kubeadm reset
 sudo swapoff -a
 sudo kubeadm init --pod-network-cidr=10.244.0.0/16
+
+
+#取得cluster token與ca cert hash
+token=$(kubeadm token create)
+token_ca_cert_hash=$(openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* //')
+default_ip=$(ip addr | grep 'state UP' -A2 | tail -n1 | awk '{print $2}' | cut -f1  -d'/')
+
+#取得使用者設定資訊	
 sudo cp /etc/kubernetes/admin.conf $HOME/
 sudo chown $(id -u):$(id -g) $HOME/admin.conf
 export KUBECONFIG=$HOME/admin.conf
@@ -33,11 +40,6 @@ export KUBECONFIG=$HOME/admin.conf
 #建立pods network
 kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/v0.9.1/Documentation/k8s-manifests/kube-flannel-rbac.yml
 kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/v0.9.1/Documentation/kube-flannel.yml
-
-#取得cluster token與ca cert hash
-token=$(kubeadm token create)
-token_ca_cert_hash=$(openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* //')
-default_ip=$(ip addr | grep 'state UP' -A2 | tail -n1 | awk '{print $2}' | cut -f1  -d'/')
 
 
 #建立shell script
@@ -64,4 +66,6 @@ do
     ssh ${node_hosts[$i]} "echo ${node_passwd[$i]} | sudo -S sh ${node_path[$i]}join-cluster-for-every-nodes.sh"
     #sshpass -p${node_passwd[$i]} ssh -o StrictHostKeyChecking=no ${node_root_users[$i]}@${node_hosts[$i]} sudo sh ${node_path[$i]}join-cluster-for-every-nodes.sh
 done
+
+#sudo bash ./restart-k8s-cluster.sh
 
